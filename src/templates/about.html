@@ -1,8 +1,18 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-    <h1>About Our Project</h1>
-    <p>Learn all about what we're building here.</p>
+
+    <div class="about_content">
+        <div class="written_content">
+            <h1>About Our Project</h1>
+            <p>Locotion is a simple and efficient house bill and document management system designed for shared households or individuals who want to stay organized. This application helps users keep track of recurring expenses like rent, utilities, and internet, while also providing a secure and accessible space to store important documents such as lease agreements, receipts, and maintenance records. With an intuitive interface and streamlined features, Locotion aims to reduce the stress of household administration by centralizing everything in one convenient place.</p>
+            <p></p>
+            <p id="square">This project is done for a RTU class: DIP329 - Applied System Software</p>
+        </div>
+        <img src="{% static 'images/house.jpg' %}" alt="My Image">
+    </div>
+
 {% endblock %}

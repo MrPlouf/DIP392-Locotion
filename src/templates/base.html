@@ -2,18 +2,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Site - {% block title %}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jacquard+12&display=swap" rel="stylesheet">
+    <title>Locotion - {% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
-<body>
-    <nav>
-        <a href="{% url 'home' %}">Home</a>
-        <a href="{% url 'about' %}">About</a>
-    </nav>
-    
-    <div class="content">
-        {% block content %}
-        {% endblock %}
-    </div>
-</body>
+    <body>
+        <nav>
+            <a id="left", href="{% url 'home' %}">Home</a>
+            <a href="{% url 'about' %}">Documents</a>
+            <a href="{% url 'about' %}">Management</a>
+            <a href="{% url 'about' %}">About</a>
+            <a id="profile", href="{% url 'about' %}">Sign In</a>
+        </nav>
+        
+        <div class="content">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </body>
 </html>
