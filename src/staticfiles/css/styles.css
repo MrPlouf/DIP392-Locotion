@@ -1,29 +1,65 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: "Jacquard 12", cursive;
+    font-size: 2em;
     line-height: 1.6;
     margin: 0;
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: #f71919;
+    background-color: #0e0e10;
+    overflow-x: hidden;
 }
 
 nav {
-    background: #f71919;
+    display: flex;
+    background: #18181b;
     padding: 10px 20px;
     margin-bottom: 20px;
 }
 
 nav a {
-    color: white;
-    margin-right: 15px;
+    color: rgb(240, 240, 232);
     text-decoration: none;
+    padding: 5px 10px;
+    white-space: nowrap;
+}
+
+#left {
+    margin-right: auto;
+}
+
+#profile {
+    margin-left: auto;
 }
 
 .content {
     padding: 0 20px;
+    max-width: 100%; 
 }
 
 h1 {
-    color: #2c3e50;
+    color: rgb(240, 240, 232);
+}
+
+p{
+    color: rgb(240, 240, 232);
+}
+
+.about_content{
+    display: flex;
+    margin: 0 5% 5% 5%;
+}
+
+.written_content{
+    display: flex;
+    flex-direction: column;
+    padding-right: 10%;
+}
+
+.about_content img{
+    height: 40%;
+    overflow: hidden;
+}
+
+#square{
+    background-color: #fcdc00;
+    border-radius: 0.2em;
+    color: #0e0e10;
 }

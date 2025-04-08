@@ -5,7 +5,6 @@ from django.contrib.staticfiles.views import serve
 from django.conf import settings
 from django.conf.urls.static import static
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
