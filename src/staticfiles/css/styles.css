@@ -1,5 +1,5 @@
 body {
-    font-family: "Jacquard 12", cursive;
+    font-family: "Limelight", sans-serif;
     font-size: 2em;
     line-height: 1.6;
     margin: 0;
@@ -16,7 +16,6 @@ nav {
 
 nav a {
     color: rgb(240, 240, 232);
-    text-decoration: none;
     padding: 5px 10px;
     white-space: nowrap;
 }
