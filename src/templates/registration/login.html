@@ -1,0 +1,92 @@
+<!-- templates/registration/login.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In - Locotion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Reuse signup styles -->
+    <link rel="stylesheet" href="{% static 'css/styles_signup.css' %}">
+     <style>
+        /* Optional: Style for Django messages */
+        .messages { list-style: none; padding: 0; margin: 0 0 20px 0; text-align: center; }
+        .messages li { padding: 10px; margin-bottom: 5px; border-radius: 5px; color: #fff; }
+        .messages li.success { background-color: #28a745; }
+        .messages li.error { background-color: #dc3545; }
+        .messages li.warning { background-color: #ffc107; color: #333; }
+        .messages li.info { background-color: #17a2b8; }
+        .field-errors .error-message { color: #dc3545; font-size: 0.85em; margin-top: 4px; }
+        .form-errors .error-message { color: #dc3545; font-weight: bold; margin-bottom: 10px; }
+        .form-group label { display: block; margin-bottom: 8px; } /* Ensure labels are block */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="info-panel">
+             <div class="tabs">
+                <!-- Current Page Button (Active) -->
+                <button type="button" class="tab-button active">Log In</button>
+                 <!-- Link to Signup Page -->
+                <a href="{% url 'signup' %}" class="tab-button" style="text-decoration: none;">Sign Up</a>
+            </div>
+            <div class="info-content">
+                 <!-- Update text for Login -->
+                <h1>Welcome Back!</h1>
+            </div>
+        </div>
+
+        <div class="form-panel">
+            <!-- Log In Form Container -->
+            <div id="login-form-content" class="form-content">
+                <h2>Log In</h2>
+                <hr>
+
+                 <!-- Display Django Messages (e.g., after successful signup redirect) -->
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li class="{{ message.tags }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                <!-- Display Login Errors (e.g., invalid credentials) -->
+                {% if form.errors %}
+                    <div class="form-errors">
+                         <p class="error-message">Your username and password didn't match. Please try again.</p>
+                    </div>
+                {% endif %}
+
+                <!-- Django Login Form -->
+                <form method="post" id="login-form">
+                    {% csrf_token %}
+
+                     <!-- Django's default Login Form usually has 'username' and 'password' fields -->
+                     <!-- You might need to adjust if your User model uses email as username -->
+                     <!-- Since our SignUpForm uses email as username, let's assume login needs email too -->
+                    <div class="form-group">
+                        <label for="id_username">Email Address</label> <!-- Label adjusted -->
+                        <input type="email" name="username" autofocus autocapitalize="none" autocomplete="email" maxlength="254" required id="id_username" class="form-group input"> <!-- Assuming email is used for login -->
+                    </div>
+                     <div class="form-group">
+                        <label for="id_password">Password</label>
+                        <input type="password" name="password" autocomplete="current-password" required id="id_password" class="form-group input">
+                    </div>
+
+                    <button type="submit" class="submit-button">Log In</button>
+                    <!-- Optional: Add link to password reset -->
+                    <!-- <p style="text-align: center; margin-top: 15px;"><a href="#">Forgot password?</a></p> -->
+                     <input type="hidden" name="next" value="{{ next }}"> <!-- Important for redirects after login -->
+                </form>
+                 <!-- ************************** -->
+
+                <p style="text-align: center; margin-top: 20px; font-size: 0.9em;">
+                    Don't have an account? <a href="{% url 'signup' %}" style="color: #333; font-weight: 600;">Sign Up</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,22 +1,65 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+{% load static %} <!-- Add this line -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locotion - Home</title>
+    <!-- Make sure the path is correct relative to your static folder structure -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=4">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat+Alternates&display=swap" rel="stylesheet">
+</head>
+<body class="landing-page">
+    <nav class="page-nav">
+        <!-- Use static tag for logo -->
+        <img class="nav-logo" src="{% static 'images/Frame.png' %}" alt="Locotion Logo"></img>
+        <div class="nav-items">
+            <button class="nav-link">Locotion</button> <!-- These might become links later -->
+            <button class="nav-link">Offers</button>
+            <button class="nav-link">Contact</button>
 
-{% block title %}{{ title }}{% endblock %}
+            <!-- Conditional display based on login status -->
+            {% if user.is_authenticated %}
+                <!-- Show user info or logout link -->
+                 <span style="color: #EEEBDD; margin-right: 15px;">Hi, {{ user.username }}!</span>
+                 <a class="nav-link" href="{% url 'logout' %}">
+                    <button>Log Out</button>
+                </a>
+            {% else %}
+                <!-- Show Login/Signup links -->
+                <a class="nav-link" href="{% url 'login' %}">
+                    <button>Log In</button>
+                </a>
+                 <a class="nav-link" href="{% url 'signup' %}">
+                    <button>Sign Up</button>
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="content-landing-page">
 
-{% block content %}
-    <h1>{{ welcome }}</h1>
-    <p>This is the home page of my new Django webapp!</p>
+        <div class="rectangles">
+            <div class="rectangle-4"></div>
+            <div class="rectangle-5"></div>
+            <h1 class="rectangle-title">Welcome to Locotion</h1>
+            <div class="line"></div>
+            <p class="text-rectangle">
+                Locotion will help you:<br>
+                Organisation of your needs and expenses<br>
+                Create precise monthly reports<br>
+                Follow your mortgage rate and purchases
+            </p>
+            <button class="cta-button">
+                Find out about our solution
+            </button>
+        </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-    
-{% endblock %}
+        <div class="images">
+             <!-- Use static tag for images -->
+            <img class="image-1" src="{% static 'images/Moving1.png' %}" alt="Moving boxes"></img>
+            <img class="image-2" src="{% static 'images/Moving2.png' %}" alt="Moving truck"></img>
+            <img class="image-3" src="{% static 'images/Moving3.png' %}" alt="People moving"></img>
+        </div>
+    </div>
+</body>
+</html>
