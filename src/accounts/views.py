@@ -1,7 +1,3 @@
-# This should be the full accounts/views.py file from the previous response where we fixed
-# the logo path indentation and A4 import for ReportLab, and the TypeError in overview_view.
-# I am providing it again here for completeness.
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login
@@ -12,18 +8,18 @@ from django.db.models.functions import Coalesce, Cast, ExtractYear
 from django.db.models.fields import CharField, IntegerField
 from django.http import HttpResponse
 from django.utils import timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from collections import defaultdict, OrderedDict
 from django.urls import reverse
 import io
 import os
-import json
+import json # No longer strictly needed for overview, but keep if other views use it
 import traceback
 
-# ReportLab Imports
+# ReportLab Imports (Keep as is if PDF generation is still desired elsewhere)
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm, mm
+from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, Table, TableStyle, Spacer, SimpleDocTemplate, Image
 from reportlab.lib import colors
@@ -37,10 +33,8 @@ from .forms import (
 )
 from .models import UserProfile, UserImage, Document, ManualTransaction
 
-
-def home(request):
-    return render(request, 'home.html')
-
+# ... (home, signup, profile, profile_edit, image views, documents, expenses_view, PDF view - keep them as they are) ...
+def home(request): return render(request, 'home.html')
 def signup(request):
     if request.user.is_authenticated: return redirect('overview')
     if request.method == 'POST':
@@ -49,38 +43,6 @@ def signup(request):
         else: messages.error(request, 'Please correct errors.')
     else: form = SignUpForm()
     return render(request, 'signup.html', {'form': form})
-
-@login_required
-def overview_view(request):
-    user_profile = get_object_or_404(UserProfile, user=request.user); current_year = timezone.now().year
-    overview_current_year = current_year
-    num_years_for_chart = 3
-    cy_doc_expenses = Document.objects.filter(user_profile=user_profile, year=current_year, amount_type='EXPENSE', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
-    cy_doc_gains = Document.objects.filter(user_profile=user_profile, year=current_year, amount_type='GAIN', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
-    cy_manual_expenses = ManualTransaction.objects.filter(user_profile=user_profile, date__year=current_year, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
-    cy_manual_gains = ManualTransaction.objects.filter(user_profile=user_profile, date__year=current_year, amount_type='GAIN').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
-    current_year_net_balance = (cy_doc_gains + cy_manual_gains) - (cy_doc_expenses + cy_manual_expenses)
-    total_documents = Document.objects.filter(user_profile=user_profile).count()
-    years_for_yoy = [current_year - i for i in range(num_years_for_chart - 1, -1, -1)]; yearly_gains_data = []; yearly_expenses_data = []
-    for year_val in years_for_yoy:
-        gains = (Document.objects.filter(user_profile=user_profile, year=year_val, amount_type='GAIN').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total'] + ManualTransaction.objects.filter(user_profile=user_profile, date__year=year_val, amount_type='GAIN').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']); yearly_gains_data.append(float(gains))
-        expenses = (Document.objects.filter(user_profile=user_profile, year=year_val, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total'] + ManualTransaction.objects.filter(user_profile=user_profile, date__year=year_val, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']); yearly_expenses_data.append(float(expenses))
-    yoy_chart_data = {'labels': [str(y) for y in years_for_yoy], 'gains': yearly_gains_data, 'expenses': yearly_expenses_data}
-    category_spending = defaultdict(Decimal)
-    doc_category_expenses = Document.objects.filter(user_profile=user_profile, year=current_year, amount_type='EXPENSE', amount__isnull=False).values('category').annotate(total_amount=Sum('amount'))
-    for item in doc_category_expenses: category_display = dict(Document.CATEGORY_CHOICES).get(item['category'], item['category']); category_spending[category_display] += item.get('total_amount', Decimal('0.00'))
-    manual_category_expenses = ManualTransaction.objects.filter(user_profile=user_profile, date__year=current_year, amount_type='EXPENSE').values('category').annotate(total_amount=Sum('amount'))
-    for item in manual_category_expenses: category_display = dict(ManualTransaction.CATEGORY_CHOICES).get(item['category'], item['category']); category_spending[category_display] += item.get('total_amount', Decimal('0.00'))
-    sorted_category_spending = OrderedDict(sorted(category_spending.items(), key=lambda item: item[1], reverse=True))
-    category_chart_data = {'labels': list(sorted_category_spending.keys())[:7], 'data': [float(v) for v in list(sorted_category_spending.values())[:7]]}
-    recent_activity_items = []
-    recent_docs = Document.objects.filter(user_profile=user_profile, amount__isnull=False).exclude(amount_type='INFO').order_by('-uploaded_at')[:5]
-    recent_manuals = ManualTransaction.objects.filter(user_profile=user_profile).order_by('-date')[:5]
-    for doc in recent_docs: recent_activity_items.append({'date': doc.uploaded_at.date(), 'display_date': doc.uploaded_at, 'type': 'Document', 'description': doc.title, 'amount': doc.amount, 'amount_type': doc.amount_type})
-    for man in recent_manuals: recent_activity_items.append({'date': man.date, 'display_date': man.date, 'type': 'Manual Entry', 'description': man.description, 'amount': man.amount, 'amount_type': man.amount_type})
-    recent_activity_items.sort(key=lambda x: x['date'], reverse=True)
-    context = {'page_title': 'Overview Dashboard', 'overview_current_year': overview_current_year, 'current_year_net_balance': current_year_net_balance, 'total_documents': total_documents, 'yoy_chart_data_json': json.dumps(yoy_chart_data), 'category_chart_data_json': json.dumps(category_chart_data), 'recent_activity': recent_activity_items[:5]}
-    return render(request, 'accounts/overview.html', context)
 
 @login_required
 def profile_view(request):
@@ -128,14 +90,13 @@ def delete_user_image_view(request, image_id):
 def documents_view(request):
     user_profile = get_object_or_404(UserProfile, user=request.user)
     doc_form_instance = DocumentForm(); show_modal_with_errors = False
-    if request.method == 'POST': # This POST is for new document upload from the modal
+    if request.method == 'POST':
         doc_form_instance = DocumentForm(request.POST, request.FILES)
         if doc_form_instance.is_valid():
             document = doc_form_instance.save(commit=False); document.user_profile = user_profile
             if not document.year: document.year = timezone.now().year
             document.save(); messages.success(request, f"Doc '{document.title}' uploaded!"); return redirect('documents')
         else: messages.error(request, "Error uploading. Check modal."); show_modal_with_errors = True
-    
     documents_query = Document.objects.filter(user_profile=user_profile)
     selected_year_str = request.GET.get('year')
     if selected_year_str: documents_query = documents_query.filter(year=selected_year_str)
@@ -165,7 +126,6 @@ def expenses_view(request):
     selected_year_str = request.GET.get('year', str(current_year))
     try: selected_year = int(selected_year_str)
     except ValueError: selected_year = current_year
-
     if request.method == 'POST' and 'submit_manual_transaction' in request.POST:
         manual_transaction_form_instance = ManualTransactionForm(request.POST)
         if manual_transaction_form_instance.is_valid():
@@ -174,7 +134,6 @@ def expenses_view(request):
             transaction_item.save(); messages.success(request, "Manual transaction added.")
             return redirect(f"{reverse('expenses')}?year={transaction_item.date.year}")
         else: messages.error(request, "Error adding manual transaction.")
-
     doc_expenses = Document.objects.filter(user_profile=user_profile, year=selected_year, amount_type='EXPENSE', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
     doc_gains = Document.objects.filter(user_profile=user_profile, year=selected_year, amount_type='GAIN', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
     manual_total_expenses = ManualTransaction.objects.filter(user_profile=user_profile, date__year=selected_year, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
@@ -182,10 +141,8 @@ def expenses_view(request):
     total_expenses_val = doc_expenses + manual_total_expenses
     total_gains_val = doc_gains + manual_total_gains
     net_balance_val = total_gains_val - total_expenses_val
-
     document_items = Document.objects.filter(user_profile=user_profile, year=selected_year, amount__isnull=False).exclude(amount_type='INFO').order_by('uploaded_at')
     manual_transaction_items = ManualTransaction.objects.filter(user_profile=user_profile, date__year=selected_year).order_by('date')
-    
     doc_years_qs = Document.objects.filter(user_profile=user_profile).values_list('year', flat=True).distinct()
     manual_trans_years_qs = ManualTransaction.objects.filter(user_profile=user_profile).annotate(transaction_year=Cast(ExtractYear('date'), output_field=IntegerField())).values_list('transaction_year', flat=True).distinct()
     combined_years_int = set()
@@ -194,134 +151,122 @@ def expenses_view(request):
             if y_val is not None: combined_years_int.add(int(y_val))
     combined_years_int.add(current_year)
     available_years = sorted(list(combined_years_int), reverse=True)
-    
-    context = {
-        'page_title': f'Financial Summary for {selected_year}',
-        'selected_year': selected_year,
-        'current_year': current_year,
-        'available_years': available_years,
-        'total_expenses': total_expenses_val,
-        'total_gains': total_gains_val,
-        'net_balance': net_balance_val,
-        'document_items': document_items,
-        'manual_transaction_items': manual_transaction_items,
-        'manual_transaction_form': manual_transaction_form_instance,
-    }
+    context = {'page_title': f'Financial Summary for {selected_year}', 'selected_year': selected_year, 'current_year': current_year, 'available_years': available_years, 'total_expenses': total_expenses_val, 'total_gains': total_gains_val, 'net_balance': net_balance_val, 'document_items': document_items, 'manual_transaction_items': manual_transaction_items, 'manual_transaction_form': manual_transaction_form_instance}
     return render(request, 'accounts/expenses.html', context)
 
 @login_required
-def generate_expenses_pdf_view(request):
-    user_profile = get_object_or_404(UserProfile, user=request.user)
-    current_year = timezone.now().year
+def generate_expenses_pdf_view(request): # Keep ReportLab version as is
+    user_profile = get_object_or_404(UserProfile, user=request.user); current_year = timezone.now().year
     selected_year_str = request.GET.get('year', str(current_year))
-    try:
-        selected_year = int(selected_year_str)
-    except ValueError:
-        selected_year = current_year
-
+    try: selected_year = int(selected_year_str)
+    except ValueError: selected_year = current_year
     doc_expenses = Document.objects.filter(user_profile=user_profile, year=selected_year, amount_type='EXPENSE', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
     doc_gains = Document.objects.filter(user_profile=user_profile, year=selected_year, amount_type='GAIN', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
     manual_total_expenses = ManualTransaction.objects.filter(user_profile=user_profile, date__year=selected_year, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
     manual_total_gains = ManualTransaction.objects.filter(user_profile=user_profile, date__year=selected_year, amount_type='GAIN').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
-    total_expenses_val = doc_expenses + manual_total_expenses
-    total_gains_val = doc_gains + manual_total_gains
-    net_balance_val = total_gains_val - total_expenses_val
-
+    total_expenses_val = doc_expenses + manual_total_expenses; total_gains_val = doc_gains + manual_total_gains; net_balance_val = total_gains_val - total_expenses_val
     combined_items = []
     doc_items_fin = Document.objects.filter(user_profile=user_profile, year=selected_year, amount__isnull=False).exclude(amount_type='INFO').order_by('uploaded_at')
     for item in doc_items_fin: combined_items.append({'date': item.uploaded_at.strftime("%Y-%m-%d") if item.uploaded_at else "N/A", 'description': item.title, 'category': item.get_category_display(), 'amount_type': item.amount_type, 'amount': item.amount if item.amount is not None else Decimal('0.00'), 'source': 'Document'})
     manual_items_fin = ManualTransaction.objects.filter(user_profile=user_profile, date__year=selected_year).order_by('date')
     for item in manual_items_fin: combined_items.append({'date': item.date.strftime("%Y-%m-%d"), 'description': item.description, 'category': item.get_category_display(), 'amount_type': item.amount_type, 'amount': item.amount if item.amount is not None else Decimal('0.00'), 'source': 'Manual Entry'})
     combined_items.sort(key=lambda x: x['date'])
-
     try:
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4,
-                                rightMargin=1.8*cm, leftMargin=1.8*cm,
-                                topMargin=2*cm, bottomMargin=2.5*cm)
-        styles = getSampleStyleSheet()
-        story = []
-        frame_width = doc.width
-        
-        user_display_name = request.user.get_full_name()
-        if not user_display_name:
-            user_display_name = request.user.username
-            if "@" in user_display_name and "." in user_display_name and not (request.user.first_name or request.user.last_name):
-                user_display_name = "Valued User"
-
+        buffer = io.BytesIO(); doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1.8*cm, leftMargin=1.8*cm, topMargin=2*cm, bottomMargin=2.5*cm); styles = getSampleStyleSheet(); story = []
+        frame_width = doc.width; user_display_name = request.user.get_full_name() or request.user.username;
+        if "@" in user_display_name and "." in user_display_name and not (request.user.first_name or request.user.last_name): user_display_name = "Valued User"
         logo_path = None
         if hasattr(settings, 'STATICFILES_DIRS') and settings.STATICFILES_DIRS and isinstance(settings.STATICFILES_DIRS, (list, tuple)) and len(settings.STATICFILES_DIRS) > 0:
-            possible_logo_path = os.path.join(settings.STATICFILES_DIRS[0], 'images', 'Frame.png')
-            if os.path.exists(possible_logo_path): 
-                logo_path = possible_logo_path
-        
-        if logo_path: 
-            try:
-                logo = Image(logo_path, width=2*cm, height=2*cm) 
-                logo.hAlign = 'LEFT' 
-                story.append(logo)
-                story.append(Spacer(1, 0.2*cm)) 
-            except Exception as img_e:
-                print(f"Error loading logo image for PDF: {img_e}")
-        
-        title_style = ParagraphStyle('ReportTitle', parent=styles['h1'], alignment=TA_CENTER, fontSize=20, spaceBefore=0.5*cm if not logo_path else 0.2*cm, spaceAfter=0.3*cm, textColor=colors.HexColor("#1A237E"))
-        story.append(Paragraph("Locotion Financial Report", title_style))
-        
-        sub_title_style = ParagraphStyle('SubTitle', parent=styles['h2'], alignment=TA_CENTER, fontSize=14, spaceAfter=0.7*cm, textColor=colors.HexColor("#424242"))
-        story.append(Paragraph(f"Annual Summary for {selected_year}", sub_title_style))
-
-        info_style = ParagraphStyle('UserInfo', parent=styles['Normal'], fontSize=9, spaceAfter=0.5*cm, alignment=TA_LEFT, leading=12)
-        story.append(Paragraph(f"<b>Report For:</b> {user_display_name}", info_style))
-        story.append(Paragraph(f"<b>Generated On:</b> {timezone.now().strftime('%B %d, %Y, %I:%M %p %Z')}", info_style))
-        story.append(Spacer(1, 1*cm))
-
-        story.append(Paragraph("<b>Financial Overview</b>", styles['h3']))
-        summary_data = [
-            [Paragraph("Total Gains:", styles['Normal']), Paragraph(f"${total_gains_val:.2f}", ParagraphStyle('Amount', parent=styles['Normal'], alignment=TA_RIGHT, textColor=colors.darkgreen))],
-            [Paragraph("Total Expenses:", styles['Normal']), Paragraph(f"${total_expenses_val:.2f}", ParagraphStyle('Amount', parent=styles['Normal'], alignment=TA_RIGHT, textColor=colors.red))],
-            [Paragraph("<b>Net Balance:</b>", ParagraphStyle('Bold', parent=styles['Normal'], fontName='Helvetica-Bold')), Paragraph(f"${net_balance_val:.2f}", ParagraphStyle('Amount', parent=styles['Normal'], alignment=TA_RIGHT, fontName='Helvetica-Bold', textColor=colors.darkblue if net_balance_val >= 0 else colors.darkred))]
-        ]
-        summary_table = Table(summary_data, colWidths=[frame_width*0.7, frame_width*0.28])
-        summary_table.setStyle(TableStyle([
-            ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey), ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('LEFTPADDING', (0,0), (-1,-1), 6), ('RIGHTPADDING', (0,0), (-1,-1), 6),
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#BDB48A")), ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor("#161219")), 
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'), ('FONTSIZE', (0,0), (-1,0), 10),
-            ('BOTTOMPADDING', (0,0), (-1,0), 6), ('TOPPADDING', (0,0), (-1,0), 6),
-        ]))
-        story.append(summary_table)
-        story.append(Spacer(1, 1.2*cm))
-
+            possible_logo_path = os.path.join(settings.STATICFILES_DIRS[0], 'images', 'Frame.png');
+            if os.path.exists(possible_logo_path): logo_path = possible_logo_path
+        if logo_path:
+            try: logo = Image(logo_path, width=2*cm, height=2*cm); logo.hAlign = 'LEFT'; story.append(logo); story.append(Spacer(1, 0.2*cm))
+            except Exception as img_e: print(f"Error loading logo image for PDF: {img_e}")
+        story.append(Paragraph("Locotion Financial Report", ParagraphStyle('ReportTitle', parent=styles['h1'], alignment=TA_CENTER, fontSize=20, spaceBefore=0.5*cm if not logo_path else 0.2*cm, spaceAfter=0.3*cm, textColor=colors.HexColor("#1A237E"))))
+        story.append(Paragraph(f"Annual Summary for {selected_year}", ParagraphStyle('SubTitle', parent=styles['h2'], alignment=TA_CENTER, fontSize=14, spaceAfter=0.7*cm, textColor=colors.HexColor("#424242"))))
+        story.append(Paragraph(f"<b>Report For:</b> {user_display_name}", ParagraphStyle('UserInfo', parent=styles['Normal'], fontSize=9, spaceAfter=0.5*cm, alignment=TA_LEFT, leading=12)))
+        story.append(Paragraph(f"<b>Generated On:</b> {timezone.now().strftime('%B %d, %Y, %I:%M %p %Z')}", ParagraphStyle('UserInfo', parent=styles['Normal'], fontSize=9, spaceAfter=0.5*cm, alignment=TA_LEFT, leading=12)))
+        story.append(Spacer(1, 1*cm)); story.append(Paragraph("<b>Financial Overview</b>", styles['h3']))
+        summary_data = [[Paragraph("Total Gains:", styles['Normal']), Paragraph(f"${total_gains_val:.2f}", ParagraphStyle('Amount', parent=styles['Normal'], alignment=TA_RIGHT, textColor=colors.darkgreen))], [Paragraph("Total Expenses:", styles['Normal']), Paragraph(f"${total_expenses_val:.2f}", ParagraphStyle('Amount', parent=styles['Normal'], alignment=TA_RIGHT, textColor=colors.red))], [Paragraph("<b>Net Balance:</b>", ParagraphStyle('Bold', parent=styles['Normal'], fontName='Helvetica-Bold')), Paragraph(f"${net_balance_val:.2f}", ParagraphStyle('Amount', parent=styles['Normal'], alignment=TA_RIGHT, fontName='Helvetica-Bold', textColor=colors.darkblue if net_balance_val >= 0 else colors.darkred))]]
+        summary_table = Table(summary_data, colWidths=[frame_width*0.7, frame_width*0.28]); summary_table.setStyle(TableStyle([('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey), ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('LEFTPADDING', (0,0), (-1,-1), 6), ('RIGHTPADDING', (0,0), (-1,-1), 6), ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#BDB48A")), ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor("#161219")), ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'), ('FONTSIZE', (0,0), (-1,0), 10), ('BOTTOMPADDING', (0,0), (-1,0), 6), ('TOPPADDING', (0,0), (-1,0), 6)])); story.append(summary_table); story.append(Spacer(1, 1.2*cm))
         if combined_items:
             story.append(Paragraph("<b>Itemized Entries</b>", styles['h3']))
-            header_style_table = ParagraphStyle('THead',parent=styles['Normal'],fontName='Helvetica-Bold',fontSize=8, alignment=TA_LEFT)
-            cell_style_table = ParagraphStyle('TCell',parent=styles['Normal'],fontSize=8, leading=10)
-            amount_cell_style_table_right = ParagraphStyle('TCellAmount',parent=cell_style_table, alignment=TA_RIGHT)
-            item_data = [[Paragraph(h, header_style_table) for h in ["Date", "Description", "Category", "Source", "Amount"]]]
-            for item in combined_items:
-                amount_val = item.get('amount', Decimal('0.00')); amount_type = item.get('amount_type', '');
-                amount_str_prefix = '+' if amount_type == 'GAIN' else ('-' if amount_type == 'EXPENSE' else '');
-                amount_str = f"{amount_str_prefix}${amount_val:.2f}";
-                item_data.append([ Paragraph(str(item.get('date','')),cell_style_table), Paragraph(str(item.get('description','N/A'))[:70],cell_style_table), Paragraph(str(item.get('category','N/A')),cell_style_table), Paragraph(str(item.get('source','N/A')),cell_style_table), Paragraph(amount_str,amount_cell_style_table_right)])
+            item_data = [[Paragraph(h, ParagraphStyle('THead',parent=styles['Normal'],fontName='Helvetica-Bold',fontSize=8)) for h in ["Date", "Description", "Category", "Source", "Amount"]]]
+            for item in combined_items: amount_val = item.get('amount', Decimal('0.00')); amount_type = item.get('amount_type', ''); amount_str_prefix = '+' if amount_type == 'GAIN' else ('-' if amount_type == 'EXPENSE' else ''); amount_str = f"{amount_str_prefix}${amount_val:.2f}"; item_data.append([ Paragraph(str(item.get('date','')),ParagraphStyle('TCell',parent=styles['Normal'],fontSize=8)), Paragraph(str(item.get('description','N/A'))[:70],ParagraphStyle('TCell',parent=styles['Normal'],fontSize=8)), Paragraph(str(item.get('category','N/A')),ParagraphStyle('TCell',parent=styles['Normal'],fontSize=8)), Paragraph(str(item.get('source','N/A')),ParagraphStyle('TCell',parent=styles['Normal'],fontSize=8)), Paragraph(amount_str,ParagraphStyle('TCellAmount',parent=styles['Normal'],fontSize=8, alignment=TA_RIGHT))])
             item_table_col_widths=[1.8*cm, 6.7*cm, 3*cm, 2.5*cm, 2*cm]; item_table = Table(item_data, colWidths=item_table_col_widths, repeatRows=1);
             item_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor("#DDDDDD")),('GRID', (0,0), (-1,-1), 0.25, colors.black),('VALIGN', (0,0), (-1,-1), 'TOP'), ('LEFTPADDING', (0,0),(-1,-1),3), ('RIGHTPADDING', (0,0),(-1,-1),3)])); story.append(item_table)
+        def _draw_page_number(canvas, doc): canvas.saveState(); canvas.setFont('Helvetica', 9); canvas.setFillColor(colors.grey); page_num_text = f"Page {doc.page}"; canvas.drawRightString(doc.pagesize[0] - doc.rightMargin - 0.5*cm, doc.bottomMargin - 0.5*cm, page_num_text); canvas.drawString(doc.leftMargin + 0.5*cm, doc.bottomMargin - 0.5*cm, "Generated by Locotion"); canvas.restoreState()
+        doc.build(story, onFirstPage=_draw_page_number, onLaterPages=_draw_page_number); pdf_value = buffer.getvalue(); buffer.close()
+        response = HttpResponse(pdf_value, content_type='application/pdf'); clean_username = "".join(c if c.isalnum() else "_" for c in user_display_name.replace(" ", "_")); filename = f'Locotion_Report_{selected_year}_{clean_username}.pdf'; response['Content-Disposition'] = f'attachment; filename="{filename}"'; return response
+    except Exception as e: print(f"!!! EXCEPTION during ReportLab PDF generation: {e} !!!"); import traceback; traceback.print_exc(); messages.error(request, f"Could not generate PDF: {e}"); expenses_url = reverse('expenses'); return redirect(f"{expenses_url}?year={selected_year}")
 
-        def _draw_page_number(canvas, doc):
-            canvas.saveState(); canvas.setFont('Helvetica', 9); canvas.setFillColor(colors.grey)
-            page_num_text = f"Page {doc.page}"; canvas.drawRightString(doc.pagesize[0] - doc.rightMargin - 0.5*cm, doc.bottomMargin - 0.5*cm, page_num_text)
-            canvas.drawString(doc.leftMargin + 0.5*cm, doc.bottomMargin - 0.5*cm, "Generated by Locotion"); canvas.restoreState()
-        
-        doc.build(story, onFirstPage=_draw_page_number, onLaterPages=_draw_page_number)
-        pdf_value = buffer.getvalue(); buffer.close()
-        response = HttpResponse(pdf_value, content_type='application/pdf')
-        clean_username = "".join(c if c.isalnum() else "_" for c in user_display_name.replace(" ", "_"))
-        filename = f'Locotion_Report_{selected_year}_{clean_username}.pdf'
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+# --- REVISED OVERVIEW VIEW ---
+@login_required
+def overview_view(request):
+    user_profile = get_object_or_404(UserProfile, user=request.user)
+    current_year = timezone.now().year
+    overview_current_year = current_year # For template display consistency
+    num_years_for_yoy_list = 5 # How many recent years to show in the list
 
-    except Exception as e:
-        print(f"!!! EXCEPTION during ReportLab PDF generation: {e} !!!")
-        traceback.print_exc()
-        messages.error(request, f"Could not generate PDF. An unexpected error occurred: {e}")
-        expenses_url = reverse('expenses')
-        return redirect(f"{expenses_url}?year={selected_year}")
+    # --- Quick Summary Data (same as before) ---
+    cy_doc_expenses = Document.objects.filter(user_profile=user_profile, year=current_year, amount_type='EXPENSE', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
+    cy_doc_gains = Document.objects.filter(user_profile=user_profile, year=current_year, amount_type='GAIN', amount__isnull=False).aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
+    cy_manual_expenses = ManualTransaction.objects.filter(user_profile=user_profile, date__year=current_year, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
+    cy_manual_gains = ManualTransaction.objects.filter(user_profile=user_profile, date__year=current_year, amount_type='GAIN').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total']
+    current_year_net_balance = (cy_doc_gains + cy_manual_gains) - (cy_doc_expenses + cy_manual_expenses)
+    total_documents = Document.objects.filter(user_profile=user_profile).count()
+
+    # --- Year-over-Year Financials (List Data) ---
+    # Get all distinct years with financial data
+    doc_years = Document.objects.filter(user_profile=user_profile, amount__isnull=False).exclude(amount_type='INFO').values_list('year', flat=True).distinct()
+    manual_years = ManualTransaction.objects.filter(user_profile=user_profile).annotate(year_val=ExtractYear('date')).values_list('year_val', flat=True).distinct()
+    all_financial_years = sorted(list(set(y for y in list(doc_years) + list(manual_years) if y is not None)), reverse=True)
+
+    yoy_financials_list = []
+    for year_val in all_financial_years[:num_years_for_yoy_list]: # Show top N years or last N years
+        gains = (Document.objects.filter(user_profile=user_profile, year=year_val, amount_type='GAIN').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total'] +
+                 ManualTransaction.objects.filter(user_profile=user_profile, date__year=year_val, amount_type='GAIN').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total'])
+        expenses = (Document.objects.filter(user_profile=user_profile, year=year_val, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total'] +
+                    ManualTransaction.objects.filter(user_profile=user_profile, date__year=year_val, amount_type='EXPENSE').aggregate(total=Coalesce(Sum('amount'), Decimal('0.00')))['total'])
+        yoy_financials_list.append({
+            'year': year_val,
+            'gains': gains,
+            'expenses': expenses,
+            'net': gains - expenses
+        })
+    
+    # --- Expense Categories (List Data for Current Year) ---
+    category_spending_list = []
+    category_spending_dict = defaultdict(Decimal)
+    doc_category_expenses = Document.objects.filter(user_profile=user_profile, year=current_year, amount_type='EXPENSE', amount__isnull=False).values('category').annotate(total_amount=Sum('amount'))
+    for item in doc_category_expenses:
+        category_display = dict(Document.CATEGORY_CHOICES).get(item['category'], item['category'])
+        category_spending_dict[category_display] += item.get('total_amount', Decimal('0.00'))
+    
+    manual_category_expenses = ManualTransaction.objects.filter(user_profile=user_profile, date__year=current_year, amount_type='EXPENSE').values('category').annotate(total_amount=Sum('amount'))
+    for item in manual_category_expenses:
+        category_display = dict(ManualTransaction.CATEGORY_CHOICES).get(item['category'], item['category'])
+        category_spending_dict[category_display] += item.get('total_amount', Decimal('0.00'))
+    
+    # Sort by amount and take top 7 for the list
+    sorted_category_spending_list = sorted(category_spending_dict.items(), key=lambda item: item[1], reverse=True)
+    top_category_expenses_list = [{'category': cat, 'amount': amt} for cat, amt in sorted_category_spending_list[:7]]
+
+    # --- Recent Activity (same as before) ---
+    recent_activity_items = []
+    recent_docs = Document.objects.filter(user_profile=user_profile, amount__isnull=False).exclude(amount_type='INFO').order_by('-uploaded_at')[:5]
+    recent_manuals = ManualTransaction.objects.filter(user_profile=user_profile).order_by('-date')[:5]
+    for doc in recent_docs: recent_activity_items.append({'date': doc.uploaded_at.date(), 'display_date': doc.uploaded_at, 'type': 'Document', 'description': doc.title, 'amount': doc.amount, 'amount_type': doc.amount_type})
+    for man in recent_manuals: recent_activity_items.append({'date': man.date, 'display_date': man.date, 'type': 'Manual Entry', 'description': man.description, 'amount': man.amount, 'amount_type': man.amount_type})
+    recent_activity_items.sort(key=lambda x: x['date'], reverse=True)
+    
+    context = {
+        'page_title': 'Overview Dashboard',
+        'overview_current_year': overview_current_year,
+        'current_year_net_balance': current_year_net_balance,
+        'total_documents': total_documents,
+        'yoy_financials_list': yoy_financials_list, # List for YoY
+        'top_category_expenses_list': top_category_expenses_list, # List for Categories
+        'recent_activity': recent_activity_items[:5],
+    }
+    return render(request, 'accounts/overview.html', context)
