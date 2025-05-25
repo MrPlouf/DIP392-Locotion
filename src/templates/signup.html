@@ -1,0 +1,116 @@
+<!-- templates/signup.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Locotion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/styles_signup.css' %}">
+    <style>
+        /* Optional: Style for Django messages */
+        .messages { list-style: none; padding: 0; margin: 0 0 20px 0; text-align: center; }
+        .messages li { padding: 10px; margin-bottom: 5px; border-radius: 5px; color: #fff; }
+        .messages li.success { background-color: #28a745; }
+        .messages li.error { background-color: #dc3545; }
+        .messages li.warning { background-color: #ffc107; color: #333; }
+        .messages li.info { background-color: #17a2b8; }
+        .field-errors .error-message { color: #dc3545; font-size: 0.85em; margin-top: 4px; }
+        .form-errors .error-message { color: #dc3545; font-weight: bold; margin-bottom: 10px; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="info-panel">
+             <div class="tabs">
+                <!-- Link to Login Page -->
+                <a href="{% url 'login' %}" class="tab-button" style="text-decoration: none;">Log In</a>
+                <!-- Current Page Button (Active) -->
+                <button type="button" class="tab-button active">Sign Up</button>
+            </div>
+            <div class="info-content">
+                <h1>Join Our <br>Community</h1>
+            </div>
+        </div>
+
+        <div class="form-panel">
+            <!-- Sign Up Form Container -->
+            <div id="signup-form-content" class="form-content"> <!-- Removed hidden class -->
+                <h2>Sign Up</h2>
+                <hr>
+
+                <!-- Display Django Messages -->
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li class="{{ message.tags }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                <!-- *** Django Form Rendering *** -->
+                <form method="post" id="signup-form" novalidate>
+                    {% csrf_token %} <!-- IMPORTANT for security -->
+
+                    <!-- Render form errors (non-field errors like validation issues) -->
+                    {% if form.non_field_errors %}
+                        <div class="form-errors">
+                            {% for error in form.non_field_errors %}
+                                <p class="error-message">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                     <!-- Render Email Field -->
+                    <div class="form-group">
+                        <label for="{{ form.email.id_for_label }}">E-mail address</label>
+                        {{ form.email }} <!-- Renders the input -->
+                        {% if form.email.errors %}
+                            <div class="field-errors">
+                                {% for error in form.email.errors %}
+                                    <p class="error-message">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                         {% if form.email.help_text %}
+                            <small style="display: block; color: #555; margin-top: 4px;">{{ form.email.help_text }}</small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Render Password Fields (UserCreationForm handles both password1 and password2) -->
+                    {% for field in form.visible_fields %}
+                        {% if field.name != 'email' %} {# Avoid rendering email twice #}
+                            <div class="form-group">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <small style="display: block; color: #555; margin-top: 4px;">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% if field.errors %}
+                                    <div class="field-errors">
+                                        {% for error in field.errors %}
+                                            <p class="error-message">{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <button type="submit" class="submit-button">Sign Up</button>
+                </form>
+                <!-- ************************** -->
+
+                <p style="text-align: center; margin-top: 20px; font-size: 0.9em;">
+                    Already have an account? <a href="{% url 'login' %}" style="color: #333; font-weight: 600;">Log In</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Removed script.js link as tab switching is not needed on this dedicated page -->
+    <!-- <script src="{% static 'js/script.js' %}"></script> -->
+</body>
+</html>

@@ -1,0 +1,93 @@
+{% extends "base_app.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"My Profile" }} - Locotion{% endblock %}
+
+{% block content %}
+<div class="profile-page-container">
+    <div class="profile-header-section">
+        <div class="profile-picture-wrapper" title="Profile picture">
+            {% if user.userprofile.profile_picture %}
+                <img src="{{ user.userprofile.profile_picture.url }}" alt="{{ user.username }}'s profile picture">
+            {% else %}
+                <i class="fas fa-user" style="font-size: 2em; color: #BDB48A;"></i> <!-- Placeholder icon -->
+            {% endif %}
+        </div>
+        <div class="profile-main-name">
+            <h2>
+                {% if user.first_name or user.last_name %}
+                    {{ user.first_name|default:"" }} {{ user.last_name|default:"" }}
+                {% else %}
+                    {{ user.username }}
+                {% endif %}
+            </h2>
+        </div>
+    </div>
+
+    <div class="profile-details-grid">
+        <div class="profile-info-item"><label>Name:</label><div class="info-value">{{ user.first_name|default_if_none:"N/A" }}</div></div>
+        <div class="profile-info-item"><label>Surname:</label><div class="info-value">{{ user.last_name|default_if_none:"N/A" }}</div></div>
+        <div class="profile-info-item"><label>Language:</label><div class="info-value">{{ user.userprofile.language|default_if_none:"N/A" }}</div></div>
+        <div class="profile-info-item full-width-item"><label>Address:</label><div class="info-value address-value">{{ user.userprofile.address|default_if_none:"N/A"|linebreaksbr }}</div></div>
+        <div class="profile-info-item"><label>Country:</label><div class="info-value">{{ user.userprofile.country|default_if_none:"N/A" }}</div></div>
+        <div class="profile-info-item"><label>Email:</label><div class="info-value">{{ user.email }}</div></div>
+    </div>
+
+    <div class="profile-additional-info">
+        <h3>Information:</h3>
+        <div class="info-line"><span class="info-label">Number of documents:</span><span class="info-data">{{ user.userprofile.document_count|default_if_none:"0" }}</span></div>
+        <div class="info-line"><span class="info-label">Ongoing:</span><span class="info-data">{{ user.userprofile.ongoing_status|default_if_none:"N/A" }}</span></div>
+        <div class="info-line"><span class="info-label">Offer Used:</span><span class="info-data">{{ user.userprofile.offer_used|default_if_none:"Basic" }}</span></div>
+    </div>
+
+    <div class="profile-edit-action">
+        <a href="{% url 'profile_edit' %}" class="edit-button-round" title="Edit Profile">
+            <i class="fas fa-pencil-alt"></i>
+        </a>
+    </div>
+
+    {# --- NEW SECTION FOR IMAGE GALLERY AND UPLOAD --- #}
+    <div class="profile-gallery-section">
+        <h3>My Pictures / Home Plans</h3>
+        <div class="image-upload-form-container">
+            <h4>Upload New Picture:</h4>
+            <form action="{% url 'add_user_image' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-field">
+                    {{ image_upload_form.image.label_tag }}
+                    {{ image_upload_form.image }}
+                    {% for error in image_upload_form.image.errors %}<p class="error-message">{{ error }}</p>{% endfor %}
+                </div>
+                <div class="form-field">
+                    {{ image_upload_form.caption.label_tag }}
+                    {{ image_upload_form.caption }}
+                    {% for error in image_upload_form.caption.errors %}<p class="error-message">{{ error }}</p>{% endfor %}
+                </div>
+                 {% for error in image_upload_form.non_field_errors %}<p class="error-message non-field-error">{{ error }}</p>{% endfor %}
+                <button type="submit" class="button-primary small-button">Upload Picture</button>
+            </form>
+        </div>
+
+        {% if gallery_images %}
+            <div class="image-gallery-grid">
+                {% for img_obj in gallery_images %}
+                    <div class="gallery-item">
+                        <a href="{{ img_obj.image.url }}" target="_blank" title="{{ img_obj.caption|default:'View image' }}">
+                            <img src="{{ img_obj.image.url }}" alt="{{ img_obj.caption|default:'User uploaded image' }}">
+                        </a>
+                        {% if img_obj.caption %}
+                            <p class="gallery-caption">{{ img_obj.caption }}</p>
+                        {% endif %}
+                        <form action="{% url 'delete_user_image' img_obj.id %}" method="POST" class="delete-image-form">
+                            {% csrf_token %}
+                            <button type="submit" class="button-danger tiny-button" onclick="return confirm('Are you sure you want to delete this image?');">Delete</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>You haven't uploaded any pictures yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,22 +1,87 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locotion - Welcome</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=9">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat+Alternates&display=swap" rel="stylesheet">
+</head>
+<body class="landing-page">
+    <nav class="page-nav">
+        <a href="{% url 'home' %}">
+            <img class="nav-logo" src="{% static 'images/Frame.png' %}" alt="Locotion Logo">
+        </a>
+        <div class="nav-items">
+            {% if user.is_authenticated %}
+                <span style="color: #EEEBDD; margin-right: 15px;">
+                    Hi, {{ user.get_full_name|default:user.username|truncatechars:20 }}!
+                </span>
+                <a href="{% url 'overview' %}" class="nav-link">
+                    <button>My Dashboard</button>
+                </a>
+                {# MODIFIED LOGOUT: Use an ID for JS targeting #}
+                <a href="#" id="logout-button-home" class="nav-link">
+                    <button>Log Out</button>
+                </a>
+            {% else %}
+                <a class="nav-link" href="{% url 'home' %}#info"> <button>Locotion</button> </a>
+                <a class="nav-link" href="{% url 'home' %}#offers"> <button>Offers</button> </a>
+                <a class="nav-link" href="{% url 'home' %}#contact"> <button>Contact</button> </a>
+                <a class="nav-link" href="{% url 'login' %}"> <button>Sign In</button> </a>
+                <a class="nav-link" href="{% url 'signup' %}"> <button>Sign Up</button> </a>
+            {% endif %}
+        </div>
+    </nav>
 
-{% block title %}{{ title }}{% endblock %}
+    {# Hidden form for logout - place it once, e.g., at the end of body if not in a base template #}
+    {# If home.html extends a base that already has this form, you don't need it again #}
+    {% if user.is_authenticated %}
+    <form id="logout-form-home-page" method="POST" action="{% url 'logout' %}" style="display: none;">
+        {% csrf_token %}
+    </form>
+    {% endif %}
 
-{% block content %}
-    <h1>{{ welcome }}</h1>
-    <p>This is the home page of my new Django webapp!</p>
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-{% endblock %}
+    <div class="content-landing-page" id="info">
+        {# ... Your existing landing page content ... #}
+        <div class="rectangles">
+            <div class="rectangle-4"></div>
+            <div class="rectangle-5"></div>
+            <h1 class="rectangle-title">Welcome to Locotion</h1>
+            <div class="line"></div>
+            <p class="text-rectangle">
+                Your housing life begins here<br>
+                Assistance with:<br>
+                Organisation of your needs and expenses<br>
+                Create precise monthly reports<br>
+                Follow your mortgage rate and purchases
+            </p>
+            <button class="cta-button">
+                Find out about our solution
+            </button>
+        </div>
+        <div class="images">
+            <img class="image-1" src="{% static 'images/Moving1.png' %}" alt="Moving boxes">
+            <img class="image-2" src="{% static 'images/Moving2.png' %}" alt="Moving truck">
+            <img class="image-3" src="{% static 'images/Moving3.png' %}" alt="People moving">
+        </div>
+    </div>
+    <script>
+        // Add this script if home.html doesn't extend a base with the logout JS
+        // Or ensure a single logout form and script is used consistently
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutButtonHome = document.getElementById('logout-button-home');
+            if (logoutButtonHome) {
+                logoutButtonHome.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    const logoutForm = document.getElementById('logout-form-home-page'); // Use specific ID
+                    if (logoutForm) {
+                        logoutForm.submit();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

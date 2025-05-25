@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Locotion App{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app_styles.css' %}?v=1">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="app-body">
+    <nav class="app-top-nav">
+        <div class="nav-left">
+            <div class="home-icon">
+                <a href="{% url 'overview' %}" title="Overview Dashboard" class="{% if request.resolver_match.url_name == 'overview' %}active{% endif %}">
+                   <i class="fas fa-home"></i>
+                </a>
+            </div>
+            <div class="nav-main">
+                <a href="{% url 'documents' %}" class="{% if request.resolver_match.url_name == 'documents' %}active{% endif %}">Documents</a>
+                <a href="{% url 'expenses' %}" class="{% if request.resolver_match.url_name == 'expenses' %}active{% endif %}">Expenses</a>
+                <a href="{% url 'overview' %}" class="{% if request.resolver_match.url_name == 'overview' %}active{% endif %}">Overview</a>
+            </div>
+        </div>
+        <div class="nav-profile-logout">
+            <a href="{% url 'profile' %}" class="profile-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Profile</a>
+            {# MODIFIED LOGOUT: Changed to a button-like link that JS will handle #}
+            <a href="#" id="logout-button-app" class="logout-link-app">Log Out</a>
+        </div>
+    </nav>
+
+    <main class="app-main-content">
+        {# ... messages and content block ... #}
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% block content %}
+            <p>Welcome to the Locotion App area. Select an option from the menu.</p>
+        {% endblock %}
+    </main>
+
+    {# Hidden form for logout #}
+    <form id="logout-form" method="POST" action="{% url 'logout' %}" style="display: none;">
+        {% csrf_token %}
+    </form>
+
+    {% block scripts_extra %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutButtonApp = document.getElementById('logout-button-app');
+            if (logoutButtonApp) {
+                logoutButtonApp.addEventListener('click', function(event) {
+                    event.preventDefault(); // Prevent default link behavior
+                    const logoutForm = document.getElementById('logout-form');
+                    if (logoutForm) {
+                        logoutForm.submit(); // Submit the hidden form
+                    }
+                });
+            }
+        });
+    </script>
+    {% endblock %}
+</body>
+</html>

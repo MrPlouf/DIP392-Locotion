@@ -1,0 +1,224 @@
+{% extends "base_app.html" %}
+{% load static %}
+{# {% load humanize %} #} {# Not needed if only using floatformat and humanize app is not added #}
+
+{% block title %}{{ page_title|default:"Financial Summary" }} - Locotion{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Styles for expenses.html - consider moving to app_styles.css */
+    .expenses-page-container { max-width: 900px; margin: 0 auto; }
+    .year-filter-form { margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
+    .year-filter-form label { font-weight: 500; color: #EEEBDD; }
+    .year-filter-form select {
+        padding: 8px 10px; border: 1px solid #4a464f; border-radius: 4px;
+        background-color: #3a363f; color: #EEEBDD; font-size: 0.9em;
+    }
+
+    .summary-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .summary-box {
+        background-color: #2c2830;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    .summary-box h3 { font-size: 1em; color: #BDB48A; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-box p { font-size: 1.5em; font-weight: 700; margin: 0; }
+    .summary-box p.positive { color: #81C784; }
+    .summary-box p.negative { color: #E57373; }
+    .summary-box p.neutral { color: #EEEBDD; }
+
+
+    .transactions-section h3 {
+        color: #BDB48A; font-size: 1.3em; margin-top: 20px; margin-bottom: 15px;
+        border-bottom: 1px solid #4a464f; padding-bottom: 8px;
+    }
+    .transaction-list { list-style: none; padding: 0; }
+    .transaction-item {
+        background-color: #27232b;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-left: 4px solid transparent; /* For type indication */
+        transition: background-color 0.2s ease;
+    }
+    .transaction-item:hover {
+        background-color: #3a363f;
+    }
+    .transaction-item.gain { border-left-color: #81C784; }
+    .transaction-item.expense { border-left-color: #E57373; }
+    .transaction-item.info { border-left-color: #757575; }
+
+    .transaction-details { flex-grow: 1; }
+    .transaction-details .description { font-weight: 500; font-size: 0.95em; color: #EEEBDD;}
+    .transaction-details .meta { font-size: 0.8em; color: #aaa; margin-top: 3px; }
+    .transaction-details .meta .category { margin-right: 10px; }
+    .transaction-details .meta .source-doc { color: #BDB48A; text-decoration: none; }
+    .transaction-details .meta .source-doc:hover { text-decoration: underline; }
+
+    .transaction-amount { font-size: 1em; font-weight: 600; min-width: 100px; text-align: right;}
+    .transaction-amount.positive { color: #81C784; }
+    .transaction-amount.negative { color: #E57373; }
+
+    .manual-transaction-form-container {
+        background-color: #2c2830; padding: 20px; border-radius: 8px;
+        margin-top: 30px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .manual-transaction-form-container h3 { color: #BDB48A; margin-bottom: 15px; }
+    .manual-transaction-form-container .form-field { margin-bottom: 15px; }
+    .manual-transaction-form-container label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9em; color: #EEEBDD;}
+    .manual-transaction-form-container input[type="text"],
+    .manual-transaction-form-container input[type="number"],
+    .manual-transaction-form-container input[type="date"],
+    .manual-transaction-form-container select {
+        width: 100%; padding: 8px 10px; border: 1px solid #4a464f; border-radius: 4px;
+        background-color: #3a363f; color: #EEEBDD; font-size: 0.9em;
+        font-family: 'Montserrat Alternates', sans-serif; /* Ensure font consistency */
+    }
+     .manual-transaction-form-container .button-primary {
+        background-color: #BDB48A; color: #161219; padding: 8px 15px;
+        border: none; border-radius: 20px; cursor: pointer; font-weight: 600;
+    }
+    .manual-transaction-form-container .error-message {
+        color: #F44336; background-color: #110f13; padding: 5px 8px; border-radius: 3px;
+        font-size: 0.8em; border: 1px solid #F44336; margin-top: 3px;
+    }
+
+
+    .generate-pdf-section {
+        margin-top: 30px;
+        text-align: center;
+        padding: 20px 0;
+        border-top: 1px solid #4a464f;
+    }
+    /* General button styles, can be moved to app_styles.css */
+    .button-primary {
+        background-color: #BDB48A; color: #161219; padding: 10px 20px;
+        border: none; border-radius: 20px; cursor: pointer; font-weight: 600;
+        text-decoration: none; font-size: 0.95em; display: inline-block;
+        transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .button-primary:hover {
+        background-color: #a89f75; /* Darker shade on hover */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .generate-pdf-section .button-primary { /* Specific for PDF button if needed */
+        padding: 12px 25px;
+        font-size: 1em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="expenses-page-container">
+    <h1>{{ page_title|default:"Financial Summary" }}</h1>
+
+    <form method="get" action="{% url 'expenses' %}" class="year-filter-form">
+        <label for="year">Select Year:</label>
+        <select name="year" id="year" onchange="this.form.submit()">
+            {% for yr in available_years %}
+                <option value="{{ yr }}" {% if yr == selected_year %}selected{% endif %}>{{ yr }}</option>
+            {% endfor %}
+        </select>
+        {# No explicit submit button needed as onchange submits the form #}
+    </form>
+
+    <section class="summary-section">
+        <div class="summary-box">
+            <h3>Total Gains</h3>
+            <p class="positive">${{ total_gains|floatformat:2|default:"0.00" }}</p>
+        </div>
+        <div class="summary-box">
+            <h3>Total Expenses</h3>
+            <p class="negative">${{ total_expenses|floatformat:2|default:"0.00" }}</p>
+        </div>
+        <div class="summary-box">
+            <h3>Net Balance</h3>
+            <p class="{% if net_balance >= 0 %}positive{% else %}negative{% endif %}">
+                ${{ net_balance|floatformat:2|default:"0.00" }}
+            </p>
+        </div>
+    </section>
+
+    <section class="transactions-section">
+        <h3>Itemized Entries for {{ selected_year }}</h3>
+        {% if document_items or manual_transaction_items %}
+            <ul class="transaction-list">
+                {# Documents #}
+                {% for item in document_items %}
+                    <li class="transaction-item {% if item.amount_type == 'GAIN' %}gain{% elif item.amount_type == 'EXPENSE' %}expense{% else %}info{% endif %}">
+                        <div class="transaction-details">
+                            <span class="description">{{ item.title }}</span>
+                            <div class="meta">
+                                <span class="date">{{ item.uploaded_at|date:"M d, Y" }}</span> |
+                                <span class="category">{{ item.get_category_display }}</span> |
+                                <span class="source">Source: <a href="{{ item.document_file.url }}" target="_blank" class="source-doc">Document</a></span>
+                            </div>
+                        </div>
+                        {% if item.amount is not None %}
+                        <div class="transaction-amount {% if item.amount_type == 'GAIN' %}positive{% elif item.amount_type == 'EXPENSE' %}negative{% endif %}">
+                            {% if item.amount_type == 'EXPENSE' %}-{% elif item.amount_type == 'GAIN' %}+{% endif %}${{ item.amount|floatformat:2 }}
+                        </div>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+
+                {# Manual Transactions #}
+                {% for item in manual_transaction_items %}
+                     <li class="transaction-item {% if item.amount_type == 'GAIN' %}gain{% elif item.amount_type == 'EXPENSE' %}expense{% endif %}">
+                        <div class="transaction-details">
+                            <span class="description">{{ item.description }}</span>
+                            <div class="meta">
+                                <span class="date">{{ item.date|date:"M d, Y" }}</span> |
+                                <span class="category">{{ item.get_category_display }}</span> |
+                                <span class="source">Source: Manual Entry</span>
+                            </div>
+                        </div>
+                        <div class="transaction-amount {% if item.amount_type == 'GAIN' %}positive{% elif item.amount_type == 'EXPENSE' %}negative{% endif %}">
+                           {% if item.amount_type == 'EXPENSE' %}-{% elif item.amount_type == 'GAIN' %}+{% endif %}${{ item.amount|floatformat:2 }}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #ccc; text-align:center;">No financial entries found for {{ selected_year }}.</p>
+        {% endif %}
+    </section>
+
+    <section class="manual-transaction-form-container">
+        <h3>Add Manual Transaction for {{ selected_year }}</h3>
+        <form method="POST" action="{% url 'expenses' %}?year={{ selected_year }}"> {# Ensure form posts to current year context #}
+            {% csrf_token %}
+            {% for field in manual_transaction_form %}
+                <div class="form-field">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}<small class="help-text">{{ field.help_text }}</small>{% endif %}
+                    {% for error in field.errors %}<p class="error-message">{{ error }}</p>{% endfor %}
+                </div>
+            {% endfor %}
+            {% for error in manual_transaction_form.non_field_errors %}<p class="error-message non-field-error">{{ error }}</p>{% endfor %}
+            <div style="text-align:right; margin-top:15px;">
+                <button type="submit" name="submit_manual_transaction" class="button-primary">Add Entry</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="generate-pdf-section">
+        {# This is the active link to trigger PDF generation #}
+        <a href="{% url 'generate_expenses_pdf' %}?year={{ selected_year }}" target="_blank" class="button-primary">
+            Generate PDF Report for {{ selected_year }}
+        </a>
+    </section>
+
+</div>
+{% endblock %}
