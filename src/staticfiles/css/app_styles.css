@@ -1,0 +1,241 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.app-body {
+    font-family: 'Montserrat Alternates', sans-serif;
+    background-color: #161219; /* Dark background from mockups */
+    color: #EEEBDD; /* Light text color */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* --- App Header/Navigation Bar --- */
+.app-top-nav {
+    background-color: #252327; /* Nav background */
+    padding: 12px 25px; /* Adjusted padding */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #3a363f;
+    min-height: 60px; /* Ensure nav has some height */
+}
+
+.app-top-nav .nav-left {
+    display: flex;
+    align-items: center;
+}
+
+.app-top-nav .home-icon a {
+    color: #EEEBDD;
+    text-decoration: none;
+    padding: 8px 10px;
+    border-radius: 20px;
+    font-size: 1.1em; /* Slightly larger for icon visibility */
+    margin-right: 15px; /* Space between home icon and main links */
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.app-top-nav .home-icon i {
+    font-size: 1.3em; /* Size of the home icon */
+}
+
+.app-top-nav .nav-main {
+    display: flex;
+    gap: 8px; /* Space between main nav items */
+}
+
+.app-top-nav .nav-main a {
+    color: #EEEBDD;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 0.9em; /* Slightly smaller than landing page nav buttons */
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.app-top-nav .nav-profile-logout {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.app-top-nav .nav-profile-logout .profile-link,
+.app-top-nav .nav-profile-logout .logout-link-app {
+    color: #EEEBDD;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+.app-top-nav a:hover,
+.app-top-nav a.active { /* Style for active link */
+    background-color: #BDB48A; /* Highlight color */
+    color: #161219; /* Dark text on highlight */
+}
+
+/* --- Main Content Area --- */
+.app-main-content {
+    flex-grow: 1;
+    padding: 25px; /* Padding around content */
+    width: 100%;
+    max-width: 900px; /* Max width of content area for profile page, can be adjusted per page */
+    margin: 20px auto; /* Added top/bottom margin and centering */
+}
+
+/* --- Styles for Django Messages --- */
+.messages {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 20px;
+}
+.messages li {
+    padding: 12px 18px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    color: #fff;
+    text-align: center;
+    font-size: 0.95em;
+}
+.messages li.success { background-color: #28a745; }
+.messages li.error { background-color: #dc3545; }
+.messages li.info { background-color: #17a2b8; }
+.messages li.warning { background-color: #ffc107; color: #161219; }
+
+/* --- Profile Page Specific Styles --- */
+.profile-page-container {
+    background-color: #BFAE8E; /* Beige background from mockup */
+    padding: 30px; /* Increased padding for content block */
+    border-radius: 20px; /* More rounded corners as per mockup */
+    color: #161219; /* Dark text on beige */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1); /* Subtle shadow */
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px; /* Increased space */
+    gap: 25px; /* Increased gap */
+}
+
+.profile-picture-container {
+    width: 80px;
+    height: 80px;
+    background-color: #252327; /* Dark placeholder */
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #EEEBDD;
+    font-size: 0.8em;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer; /* To indicate it might be clickable later */
+    flex-shrink: 0; /* Prevent shrinking if name is too long */
+}
+
+.profile-name-details {
+    flex-grow: 1;
+}
+.profile-name-details h2 {
+    font-size: 1.8em; /* Larger name */
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #161219;
+}
+.profile-name-details p {
+    font-size: 0.9em;
+    color: #3a363f; /* Slightly muted color for join date */
+}
+
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive columns */
+    gap: 20px; /* Gap between grid items */
+    margin-bottom: 30px;
+}
+
+
+.info-item label {
+    display: block;
+    font-weight: 600; /* Bolder labels */
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    color: #252327;
+}
+
+.info-item .value {
+    background-color: #EDE4D0; /* Lighter beige for value fields */
+    color: #161219;
+    padding: 12px 18px; /* More padding */
+    border-radius: 25px; /* Pill shape from mockup */
+    font-size: 0.95em;
+    min-height: 44px; /* Consistent height */
+    display: flex;
+    align-items: center;
+    word-break: break-word; /* Prevent long text from breaking layout */
+}
+.info-item .value.address-value { /* Specific for address if it needs more height */
+    min-height: 60px; /* Allow more space for multi-line address */
+    align-items: flex-start; /* Align text to top for multi-line */
+}
+
+
+.profile-summary {
+    margin-top: 25px;
+    border-top: 1px solid #9d9179; /* Separator line */
+    padding-top: 25px;
+}
+
+.profile-summary h3 {
+    font-weight: 700;
+    margin-bottom: 15px;
+    font-size: 1.1em; /* "Information:" title */
+    color: #161219;
+    /* Removed border-bottom and inline-block for a cleaner look, as per mockup */
+}
+
+.summary-item {
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    color: #252327;
+}
+.summary-item strong {
+    font-weight: 600; /* Bolder labels */
+    min-width: 180px; /* Align values somewhat */
+    display: inline-block;
+}
+
+
+.edit-profile-button-container {
+    display: flex;
+    justify-content: flex-end; /* Align button to the far right */
+    margin-top: 15px; /* Reduced margin as it's at the bottom */
+}
+
+.edit-profile-button {
+    background-color: #252327; /* Dark button like mockup */
+    color: #EEEBDD;
+    border: none;
+    border-radius: 50%; /* Round button */
+    width: 50px; /* Size of the round button */
+    height: 50px;
+    cursor: pointer;
+    font-size: 1.2em; /* Icon size */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.edit-profile-button:hover {
+    background-color: #3a363f;
+}

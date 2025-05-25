@@ -1,0 +1,400 @@
+{% extends "base_app.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"My Documents" }} - Locotion{% endblock %}
+
+{% block head_extra %}
+    <style>
+        /* Styles specific to this page or that enhance app_styles.css for this layout */
+        /* These styles should ideally be moved to your static/css/app_styles.css file */
+
+        .documents-container {
+            display: flex;
+            gap: 20px; /* Space between sidebar and content */
+            /* Calculate height based on viewport, nav, and padding. Adjust these values as needed */
+            height: calc(100vh - 55px - 15px - 15px - 20px - 20px); /* VP_height - nav_height - main_content_margin_top - main_content_margin_bottom - main_content_padding_top - main_content_padding_bottom */
+        }
+
+        .documents-sidebar {
+            flex: 0 0 320px; /* Slightly wider sidebar */
+            background-color: #2c2830;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .documents-sidebar h3, .documents-sidebar h4 {
+            color: #BDB48A;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            border-bottom: 1px solid #4a464f;
+            padding-bottom: 8px;
+        }
+        .documents-sidebar h3 { font-size: 1.2em; padding-bottom: 10px; margin-bottom: 15px;}
+
+
+        .add-document-button-area { margin-bottom: 15px; }
+        .add-document-button-area .button-primary {
+            width: 100%; text-align: center; background-color: #BDB48A; color: #161219;
+            padding: 10px 15px; border: none; border-radius: 20px; cursor: pointer; font-weight: 600;
+            font-size: 0.9em; display: flex; align-items: center; justify-content: center;
+        }
+        .add-document-button-area .button-primary i { margin-right: 8px; }
+
+
+        .filters-area { margin-bottom: 15px; }
+        .filters-area .filter-group { margin-bottom: 10px; }
+        .filters-area label { display: block; font-size: 0.85em; margin-bottom: 4px; font-weight: 500; }
+        .filters-area select, .filters-area input[type="text"] {
+            width: 100%; padding: 7px; background-color: #3a363f; color: #EEEBDD;
+            border: 1px solid #4a464f; border-radius: 4px; font-size: 0.85em;
+        }
+        .clear-filters-link { font-size: 0.8em; color: #BDB48A; text-decoration:none; display:block; text-align:right; margin-top:5px;}
+        .clear-filters-link:hover { text-decoration: underline;}
+
+
+        .document-scroll-list {
+            flex-grow: 1; overflow-y: auto; margin-top: 5px;
+            padding-right: 5px; /* Space for scrollbar */
+        }
+        .document-scroll-list::-webkit-scrollbar { width: 6px; }
+        .document-scroll-list::-webkit-scrollbar-track { background: #2c2830; }
+        .document-scroll-list::-webkit-scrollbar-thumb { background: #555; border-radius: 3px;}
+        .document-scroll-list::-webkit-scrollbar-thumb:hover { background: #777; }
+
+        .document-scroll-list .doc-year-group { margin-bottom: 12px; }
+        .document-scroll-list .doc-year-group h4 {
+            font-size: 0.95em; color: #aaa; margin-bottom: 6px; padding-bottom: 4px;
+            border-bottom: 1px dotted #4a464f;
+        }
+        .document-scroll-list ul { list-style: none; padding: 0; }
+        .document-scroll-list li {
+            padding: 8px 10px; border-radius: 4px; margin-bottom: 5px; cursor: pointer;
+            background-color: #3a363f; transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .document-scroll-list li:hover, .document-scroll-list li.active-doc {
+            background-color: #BDB48A; color: #161219;
+        }
+        .document-scroll-list li .doc-title { font-weight: 500; font-size: 0.9em; display: block; margin-bottom: 2px;}
+        .document-scroll-list li .doc-meta { font-size: 0.75em; color: #999; }
+        .document-scroll-list li.active-doc .doc-meta,
+        .document-scroll-list li:hover .doc-meta { color: #2c2830; }
+
+
+        .document-preview-area {
+            flex-grow: 1; background-color: #221e25; /* Darker for preview background */
+            padding: 10px; border-radius: 8px; display: flex; flex-direction: column;
+            overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+        .document-preview-area #previewObjectContainer {
+            flex-grow: 1; display: flex; align-items: center; justify-content: center;
+            background-color: #1a171d; /* Even darker for the direct preview background */
+            border-radius: 4px;
+            min-height: 200px; /* Ensure it has some height even when empty */
+        }
+        .document-preview-area #preview-placeholder { color: #666; font-style: italic; font-size: 0.9em; }
+        /* Ensure embed, iframe, img fill their container IF used for preview */
+        .document-preview-area #previewObjectContainer embed,
+        .document-preview-area #previewObjectContainer iframe,
+        .document-preview-area #previewObjectContainer img {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .document-preview-area img { object-fit: contain; /* Show whole image, don't crop */ }
+
+        .document-preview-area .download-link-area { text-align: center; padding: 20px; }
+        .document-preview-area .download-link-area p { margin-bottom: 15px; font-size:0.9em; color: #ccc;}
+        .document-preview-area .download-link-area a {
+            color: #BDB48A; font-weight: bold; text-decoration: none; padding: 10px 15px;
+            border: 1px solid #BDB48A; border-radius: 20px; font-size: 0.9em;
+        }
+        .document-preview-area .download-link-area a:hover { background-color: #BDB48A; color: #161219; }
+
+        #document-details-pane {
+            padding:15px;
+            border-top: 1px solid #3a363f;
+            margin-top:10px;
+            background-color: #2c2830; /* Match sidebar for detail consistency */
+            border-radius: 0 0 8px 8px; /* Rounded bottom if preview area is above */
+            max-height: 220px; /* Limit height and make scrollable if needed */
+            overflow-y: auto;
+        }
+        #document-details-pane h4 {color:#BDB48A; margin-bottom:8px; font-size: 1.1em;}
+        #document-details-pane p {font-size:0.85em; margin-bottom: 4px; color: #ccc;}
+        #document-details-pane p.amount.gain { color: #81C784; /* Lighter green */ }
+        #document-details-pane p.amount.expense { color: #E57373; /* Lighter red */ }
+        #document-details-pane .button-danger.tiny-button { margin-top:10px; }
+
+
+        /* Modal styles for document upload */
+        .modal {
+            display: none; position: fixed; z-index: 1500; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7);
+            align-items: center; justify-content: center; backdrop-filter: blur(3px);
+        }
+        .modal-content {
+            background-color: #2c2830; margin: auto; padding: 25px;
+            border-radius: 8px; width: 90%; max-width: 550px; position: relative;
+            color: #EEEBDD; box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        .modal-content h3 { color: #BDB48A; margin-bottom: 20px; font-size: 1.3em; text-align: center;}
+        .close-modal {
+            color: #aaa; position: absolute; top: 10px; right: 15px;
+            font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;
+        }
+        .close-modal:hover { color: #EEEBDD; }
+        .modal-content .form-field label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 0.9em; }
+        .modal-content .form-field input[type="text"],
+        .modal-content .form-field input[type="number"],
+        .modal-content .form-field select,
+        .modal-content .form-field textarea,
+        .modal-content .form-field input[type="file"] {
+            width: 100%; padding: 10px 12px; border: 1px solid #4a464f; border-radius: 4px;
+            background-color: #3a363f; color: #EEEBDD; font-size: 0.95em;
+            font-family: 'Montserrat Alternates', sans-serif;
+        }
+        .modal-content .form-field textarea { min-height: 70px; }
+        .modal-content .form-actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-content .button-primary, .modal-content .button-secondary {
+            padding: 10px 20px; border: none; border-radius: 20px; font-weight: 600;
+            cursor: pointer; text-decoration: none; font-size: 0.95em;
+        }
+        .modal-content .button-primary { background-color: #BDB48A; color: #161219; }
+        .modal-content .button-secondary { background-color: #4a464f; color: #EEEBDD; }
+        .modal-content .error-message {
+            color: #F44336; background-color: #110f13; padding: 5px 8px; border-radius: 3px;
+            font-size: 0.8em; border: 1px solid #F44336; margin-top: 3px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="documents-page-container">
+    {# Removed the outer h1 title to give more space to the two-pane layout #}
+    {# If you want a title above the two panes, you can add it here #}
+    {# <h1>{{ page_title|default:"My Documents" }}</h1> #}
+
+    <div class="documents-container">
+        <aside class="documents-sidebar">
+            <h3>Manage Documents</h3>
+            <div class="add-document-button-area">
+                <button type="button" class="button-primary" id="addDocumentBtn">
+                    <i class="fas fa-plus-circle"></i> Add New Document
+                </button>
+            </div>
+            <div class="filters-area">
+                <h4>Filters</h4>
+                <form id="filterForm" method="GET" action="{% url 'documents' %}">
+                    <div class="filter-group">
+                        <label for="filter_year">Year:</label>
+                        <select name="year" id="filter_year" onchange="this.form.submit()">
+                            <option value="">All Years</option>
+                            {% for year_val in available_years %}
+                                <option value="{{ year_val }}" {% if request.GET.year == year_val|stringformat:"s" %}selected{% endif %}>{{ year_val }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter_category">Category:</label>
+                        <select name="category" id="filter_category" onchange="this.form.submit()">
+                            <option value="">All Categories</option>
+                            {% for cat_val, cat_disp in category_choices %}
+                                <option value="{{ cat_val }}" {% if request.GET.category == cat_val %}selected{% endif %}>{{ cat_disp }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter_amount_type">Financial Type:</label>
+                        <select name="amount_type" id="filter_amount_type" onchange="this.form.submit()">
+                            <option value="">All Types</option>
+                             {% for type_val, type_disp in amount_type_choices %}
+                                <option value="{{ type_val }}" {% if request.GET.amount_type == type_val %}selected{% endif %}>{{ type_disp }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                     {% if request.GET.year or request.GET.category or request.GET.amount_type %}
+                        <a href="{% url 'documents' %}" class="clear-filters-link">Clear Filters</a>
+                     {% endif %}
+                </form>
+            </div>
+            <div class="document-scroll-list">
+                {% if documents_by_year %}
+                    {% for year, docs_in_year in documents_by_year.items %}
+                        <div class="doc-year-group">
+                            <h4>{{ year }}</h4>
+                            <ul>
+                                {% for doc in docs_in_year %}
+                                    <li data-url="{{ doc.document_file.url }}" data-type="{{ doc.file_extension }}" data-title="{{ doc.title|escapejs }}"
+                                        data-category="{{doc.get_category_display}}" data-amount="{{doc.amount|default_if_none:''}}" data-amount-type="{{doc.get_amount_type_display}}"
+                                        data-description="{{doc.description|default_if_none:''|truncatewords:15|escapejs}}"
+                                        data-delete-url="{% url 'delete_document' doc.id %}">
+                                        <div class="doc-title">{{ doc.title|truncatechars:30 }}</div>
+                                        <div class="doc-meta">{{ doc.get_category_display }}</div>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% empty %}
+                         <p style="text-align:center; color:#777; margin-top:20px;">No documents found matching your filters.</p>
+                    {% endfor %}
+                {% else %}
+                    <p style="text-align:center; color:#777; margin-top:20px;">No documents uploaded yet.</p>
+                {% endif %}
+            </div>
+        </aside>
+        <section class="document-preview-area">
+            <div id="previewObjectContainer">
+                <p id="preview-placeholder">Select a document from the list to view its details and preview.</p>
+            </div>
+             <div id="document-details-pane" style="display:none;">
+                <h4 id="detail-title"></h4>
+                <p id="detail-category"></p>
+                <p id="detail-amount"></p>
+                <p id="detail-description" style="white-space: pre-wrap;"></p>
+                <form id="detail-delete-form" method="POST" style="margin-top:10px;">
+                    {% csrf_token %}
+                    <button type="submit" class="button-danger tiny-button">Delete This Document</button>
+                </form>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div id="uploadDocumentModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="closeUploadModal()">×</span>
+    <h3>Upload New Document</h3>
+    <form method="POST" action="{% url 'documents' %}" enctype="multipart/form-data" class="document-upload-form" style="background-color:transparent; box-shadow:none; padding:0;">
+        {% csrf_token %}
+        {% for field in doc_form %}
+            <div class="form-field">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.help_text %}<small class="help-text">{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}<p class="error-message">{{ error }}</p>{% endfor %}
+            </div>
+        {% endfor %}
+        {% for error in doc_form.non_field_errors %}<p class="error-message non-field-error">{{ error }}</p>{% endfor %}
+        <div class="form-actions">
+            <button type="button" class="button-secondary" onclick="closeUploadModal()">Cancel</button>
+            <button type="submit" class="button-primary">Upload Document</button>
+        </div>
+    </form>
+  </div>
+</div>
+
+<script>
+    const uploadModal = document.getElementById('uploadDocumentModal');
+    const addDocumentBtn = document.getElementById('addDocumentBtn');
+    const previewObjectContainer = document.getElementById('previewObjectContainer');
+    const previewPlaceholder = document.getElementById('preview-placeholder');
+
+    const detailsPane = document.getElementById('document-details-pane');
+    const detailTitle = document.getElementById('detail-title');
+    const detailCategory = document.getElementById('detail-category');
+    const detailAmount = document.getElementById('detail-amount');
+    const detailDescription = document.getElementById('detail-description');
+    const detailDeleteForm = document.getElementById('detail-delete-form');
+
+    if (addDocumentBtn) {
+        addDocumentBtn.onclick = function() {
+            if (uploadModal) uploadModal.style.display = "flex";
+        }
+    }
+    function closeUploadModal() {
+        if (uploadModal) uploadModal.style.display = "none";
+    }
+    window.onclick = function(event) {
+        if (event.target == uploadModal) { // Check if the target is the modal itself (the overlay)
+            closeUploadModal();
+        }
+    }
+
+    document.querySelectorAll('.document-scroll-list li').forEach(item => {
+        item.addEventListener('click', function() {
+            document.querySelectorAll('.document-scroll-list li.active-doc').forEach(active => active.classList.remove('active-doc'));
+            this.classList.add('active-doc');
+
+            const url = this.dataset.url;
+            const type = this.dataset.type;
+            const title = this.dataset.title;
+            const categoryText = this.dataset.category;
+            const amountValue = this.dataset.amount;
+            const amountTypeText = this.dataset.amountType;
+            const descriptionText = this.dataset.description;
+            const deleteUrl = this.dataset.deleteUrl;
+
+            if (previewObjectContainer) previewObjectContainer.innerHTML = '';
+            if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+
+            if (type === '.pdf') {
+                // Default to "Open in new tab" for PDFs for local development reliability
+                if (previewObjectContainer) {
+                    previewObjectContainer.innerHTML = `
+                        <div class="download-link-area" style="padding-top: 50px; text-align:center;">
+                            <p>PDFs are best viewed directly in your browser or PDF application.</p>
+                            <a href="${url}" target="_blank">Open "${title}" in new tab</a>
+                        </div>`;
+                }
+            } else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(type)) {
+                const img = document.createElement('img');
+                img.src = url; img.alt = title;
+                if (previewObjectContainer) previewObjectContainer.appendChild(img);
+            } else {
+                if (previewObjectContainer) {
+                    previewObjectContainer.innerHTML = `
+                        <div class="download-link-area" style="padding-top: 50px; text-align:center;">
+                            <p>Preview not available for <strong>${type}</strong> files.</p>
+                            <a href="${url}" download target="_blank">Download "${title}"</a>
+                        </div>`;
+                }
+            }
+
+            if (detailTitle) detailTitle.textContent = title;
+            if (detailCategory) detailCategory.textContent = `Category: ${categoryText}`;
+            if (detailAmount) {
+                if (amountValue && amountValue !== 'None') {
+                    let amountStr = amountTypeText === 'Expense' ? '-' : (amountTypeText === 'Gain' ? '+' : '');
+                    amountStr += `$${parseFloat(amountValue).toFixed(2)} (${amountTypeText})`; // Ensure amountValue is parsed as float
+                    detailAmount.textContent = `Amount: ${amountStr}`;
+                    detailAmount.className = amountTypeText === 'Gain' ? 'amount gain' : (amountTypeText === 'Expense' ? 'amount expense' : 'amount');
+                } else {
+                    detailAmount.textContent = 'Amount: N/A';
+                    detailAmount.className = 'amount';
+                }
+            }
+            if (detailDescription) detailDescription.textContent = descriptionText ? `Description: ${descriptionText}` : 'Description: N/A';
+            if (detailDeleteForm) {
+                detailDeleteForm.action = deleteUrl;
+                detailDeleteForm.onsubmit = function() { return confirm('Are you sure you want to delete "' + title + '"?'); };
+            }
+            if (detailsPane) detailsPane.style.display = 'block';
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log("DOMContentLoaded event triggered.");
+
+        // Parse the Django template value safely into a JS boolean
+        const showModalDueToErrorsRaw = "{{ show_modal_with_errors|yesno:'true,false' }}";
+        const showModalDueToErrors = showModalDueToErrorsRaw === 'true';
+        console.log("Parsed showModalDueToErrors:", showModalDueToErrors);
+
+        const testModalElement = document.getElementById('uploadDocumentModal');
+        if (!testModalElement) {
+            console.error("Modal element #uploadDocumentModal not found in DOM.");
+            return;
+        }
+
+        if (showModalDueToErrors) {
+            testModalElement.style.display = "flex";
+            console.log("Modal displayed due to form errors.");
+        }
+    }); 
+
+</script>
+{% endblock %}
